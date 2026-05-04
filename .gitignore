@@ -22,3 +22,6 @@ Thumbs.db
 
 # Dataset
 /dataset
+
+# Output
+/output_triples

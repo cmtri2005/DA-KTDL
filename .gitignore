@@ -19,3 +19,11 @@ env/
 # OS
 .DS_Store
 Thumbs.db
+
+# Dataset
+/dataset
+
+# Output
+/output_triples
+
+/outputs

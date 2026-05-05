@@ -49,30 +49,30 @@ Nhận xét phase hiện tại: đang đi đúng hướng và bám Section 3.1-3
 
 ## Phase 2 - Embedding generation
 
-- [ ] Cài dependencies:
-  - [ ] `sentence-transformers`
-  - [ ] `transformers`
-  - [ ] `torch`
-  - [ ] `scikit-learn`
-  - [ ] `hdbscan`
-  - [ ] `optuna`
-  - [ ] `evaluate` hoặc tự tính metrics bằng sklearn.
-- [ ] Tạo script `embedding_pipeline.py`.
-- [ ] Với mỗi split và representation, encode bằng 4 model:
-  - [ ] `sentence-transformers/all-MiniLM-L6-v2`
-  - [ ] `sentence-transformers/all-mpnet-base-v2`
-  - [ ] `allenai/specter`
-  - [ ] `allenai/scibert_scivocab_uncased`
-- [ ] L2-normalize toàn bộ embeddings.
-- [ ] Lưu embeddings theo format `.npy` hoặc `.parquet`, kèm file metadata mapping `id -> label`.
-- [ ] Với SciBERT/SPECTER nếu không dùng sentence-transformers trực tiếp:
-  - [ ] Tokenize max length phù hợp.
-  - [ ] Mean pooling hoặc CLS pooling phải được ghi rõ.
-  - [ ] Dùng cùng pooling cho mọi representation.
-- [ ] Verification:
-  - [ ] Shape đúng: `n_docs x embedding_dim`.
-  - [ ] Không có NaN/Inf.
-  - [ ] Norm vector xấp xỉ 1 sau normalization.
+- [x] Cài dependencies:
+  - [x] `sentence-transformers`
+  - [x] `transformers`
+  - [x] `torch`
+  - [x] `scikit-learn`
+  - [x] `hdbscan`
+  - [x] `optuna`
+  - [x] `evaluate` hoặc tự tính metrics bằng sklearn.
+- [x] Tạo script `embedding_pipeline.py`.
+- [x] Với mỗi split và representation, encode bằng 4 model:
+  - [x] `sentence-transformers/all-MiniLM-L6-v2`
+  - [x] `sentence-transformers/all-mpnet-base-v2`
+  - [x] `allenai/specter`
+  - [x] `allenai/scibert_scivocab_uncased`
+- [x] L2-normalize toàn bộ embeddings.
+- [x] Lưu embeddings theo format `.npy` hoặc `.parquet`, kèm file metadata mapping `id -> label`.
+- [x] Với SciBERT/SPECTER nếu không dùng sentence-transformers trực tiếp:
+  - [x] Tokenize max length phù hợp.
+  - [x] Mean pooling hoặc CLS pooling phải được ghi rõ.
+  - [x] Dùng cùng pooling cho mọi representation.
+- [x] Verification:
+  - [x] Shape đúng: `n_docs x embedding_dim`.
+  - [x] Không có NaN/Inf.
+  - [x] Norm vector xấp xỉ 1 sau normalization.
 
 ## Phase 3 - Unsupervised clustering
 

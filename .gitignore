@@ -12,6 +12,7 @@ __pycache__/
 venv/
 env/
 .env/
+.venv_wsl/
 
 # Jupyter
 .ipynb_checkpoints/
@@ -27,3 +28,4 @@ Thumbs.db
 /output_triples
 
 /outputs
+embeddings/outputs/

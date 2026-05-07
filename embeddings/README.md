@@ -14,7 +14,7 @@ pip install -r requirements-phase2.txt
 
 ```bash
 python -m phase2_embeddings \
-  --phase1_output output_triples \
+  --phase1_output outputs/phase1_data \
   --output_root outputs/phase2_embeddings \
   --splits all \
   --representations all \
@@ -32,7 +32,7 @@ Ví dụ chỉ chạy `cluster`, chỉ dùng `abstract` và `triples`, với 2 m
 
 ```bash
 python -m phase2_embeddings \
-  --phase1_output output_triples \
+  --phase1_output outputs/phase1_data \
   --output_root outputs/phase2_embeddings \
   --splits cluster \
   --representations abstract triples \

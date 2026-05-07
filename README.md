@@ -90,7 +90,7 @@ python3 -m arxiv_triples_pipeline
 Lệnh trên chạy với default:
 
 - input: `dataset/arxiv-metadata-oai-snapshot.json`
-- output: `output_triples`
+- output: `outputs/phase1_data`
 - clustering split: `5000`
 - classification split: `10000`
 - spaCy model: `en_core_sci_md`
@@ -102,7 +102,7 @@ Paper chỉ nói dùng subset "recent years" nhưng không công bố chính xá
 
 ```bash
 python3 -m arxiv_triples_pipeline \
-  --output output_triples_smoke \
+  --output outputs/phase1_data_smoke \
   --n_cluster 100 \
   --n_classify 200 \
   --spacy_model en_core_sci_md \
@@ -116,7 +116,7 @@ python3 -m arxiv_triples_pipeline \
 
 ```bash
 python3 -m arxiv_triples_pipeline \
-  --output output_triples \
+  --output outputs/phase1_data \
   --n_cluster 5000 \
   --n_classify 10000 \
   --spacy_model en_core_sci_md \

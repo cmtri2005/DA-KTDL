@@ -76,38 +76,38 @@ Nhận xét phase hiện tại: đang đi đúng hướng và bám Section 3.1-3
 
 ## Phase 3 - Unsupervised clustering
 
-- [ ] Tạo script `clustering_pipeline.py`.
-- [ ] Với mỗi combination `representation x embedding_model`, chạy:
-  - [ ] KMeans với `k in [3, 12]`.
-  - [ ] GMM với `k in [3, 12]`.
-  - [ ] HDBSCAN với sweep `min_cluster_size`.
-- [ ] Tính metrics:
-  - [ ] ARI.
-  - [ ] NMI.
-  - [ ] Silhouette.
-  - [ ] Noise fraction cho HDBSCAN.
-- [ ] Chọn best KMeans/GMM bằng `0.5 * ARI + 0.5 * NMI`.
-- [ ] Chọn best HDBSCAN bằng `NMI + 0.5 * ARI - 0.5 * noise_fraction`.
-- [ ] Lưu bảng kết quả tương đương Table 1.
-- [ ] Lưu cluster label cho 5.000 clustering docs.
-- [ ] Phân tích label distribution trong cluster:
-  - [ ] astro-ph cluster.
-  - [ ] math cluster.
-  - [ ] cond-mat vs quant-ph.
-  - [ ] hep/ph/gr-qc overlap.
-  - [ ] mixed interdisciplinary cluster.
-- [ ] Expected reproduction target:
-  - [ ] Abstract + MPNet KMeans/GMM tốt nhất, ARI khoảng `0.47`, NMI khoảng `0.55`.
-  - [ ] Triples-only thấp hơn rõ.
-  - [ ] HDBSCAN kém do nhiều noise.
+- [x] Tạo script `clustering_pipeline.py`.
+- [x] Với mỗi combination `representation x embedding_model`, chạy:
+  - [x] KMeans với `k in [3, 12]`.
+  - [x] GMM với `k in [3, 12]`.
+  - [x] HDBSCAN với sweep `min_cluster_size`.
+- [x] Tính metrics:
+  - [x] ARI.
+  - [x] NMI.
+  - [x] Silhouette.
+  - [x] Noise fraction cho HDBSCAN.
+- [x] Chọn best KMeans/GMM bằng `0.5 * ARI + 0.5 * NMI`.
+- [x] Chọn best HDBSCAN bằng `NMI + 0.5 * ARI - 0.5 * noise_fraction`.
+- [x] Lưu bảng kết quả tương đương Table 1.
+- [x] Lưu cluster label cho 5.000 clustering docs.
+- [x] Phân tích label distribution trong cluster:
+  - [x] astro-ph cluster.
+  - [x] math cluster.
+  - [x] cond-mat vs quant-ph.
+  - [x] hep/ph/gr-qc overlap.
+  - [x] mixed interdisciplinary cluster.
+- [x] Expected reproduction target:
+  - [x] Abstract + MPNet KMeans/GMM tốt nhất, ARI khoảng `0.47`, NMI khoảng `0.55`.
+  - [x] Triples-only thấp hơn rõ.
+  - [x] HDBSCAN kém do nhiều noise.
 
 ## Phase 4 - Cluster propagation sang classification set
 
-- [ ] Dùng nearest-neighbor trong embedding space để gán cluster signal từ 5.000 clustering docs sang 10.000 classification docs.
-- [ ] Chạy propagation riêng theo từng representation dùng ở clustering stage.
-- [ ] Lưu `cluster_id` hoặc feature phụ cho từng classification document.
-- [ ] Kiểm tra phân phối `cluster_id` không bị collapse vào 1-2 cluster.
-- [ ] Ghi rõ assumption: paper nhắc propagation labels nhưng không mô tả toàn bộ chi tiết implement, nên cần báo cáo cách mình hiện thực.
+- [x] Dùng nearest-neighbor trong embedding space để gán cluster signal từ 5.000 clustering docs sang 10.000 classification docs.
+- [x] Chạy propagation riêng theo từng representation dùng ở clustering stage.
+- [x] Lưu `cluster_id` hoặc feature phụ cho từng classification document.
+- [x] Kiểm tra phân phối `cluster_id` không bị collapse vào 1-2 cluster.
+- [x] Ghi rõ assumption: paper nhắc propagation labels nhưng không mô tả toàn bộ chi tiết implement, nên cần báo cáo cách mình hiện thực.
 
 ## Phase 5 - Supervised classification
 

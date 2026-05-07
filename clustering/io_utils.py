@@ -27,9 +27,9 @@ def detect_phase2_root(requested: Path | None) -> Path:
         return requested
 
     candidates = (
-        Path("embeddings/outputs/phase2_embeddings_eval"),
         Path("outputs/phase2_embeddings"),
         Path("outputs/phase2_embeddings_eval"),
+        Path("embeddings/outputs/phase2_embeddings_eval"),
     )
     for candidate in candidates:
         if candidate.exists():
@@ -37,7 +37,8 @@ def detect_phase2_root(requested: Path | None) -> Path:
 
     raise FileNotFoundError(
         "Could not auto-detect Phase 2 root. Please pass --phase2_root.\n"
-        "Tried: embeddings/outputs/phase2_embeddings_eval, outputs/phase2_embeddings, outputs/phase2_embeddings_eval"
+        "Tried: outputs/phase2_embeddings, outputs/phase2_embeddings_eval, "
+        "embeddings/outputs/phase2_embeddings_eval"
     )
 
 
@@ -50,17 +51,23 @@ def read_jsonl(path: Path) -> Iterable[dict]:
             yield json.loads(line)
 
 
-def load_metadata_labels(path: Path) -> tuple[np.ndarray, list[str], list[str]]:
-    """Return (y_true, doc_ids, labels_as_str) in row_index order."""
+def load_metadata_rows(path: Path) -> list[dict]:
+    """Return metadata rows sorted by embedding row_index."""
     rows = list(read_jsonl(path))
     if not rows:
         raise ValueError(f"Empty metadata file: {path}")
 
     rows.sort(key=lambda item: int(item["row_index"]))
+    return rows
+
+
+def load_metadata_labels(path: Path) -> tuple[np.ndarray, list[str], list[str], list[dict]]:
+    """Return (y_true, doc_ids, labels_as_str, rows) in row_index order."""
+    rows = load_metadata_rows(path)
     doc_ids = [row["id"] for row in rows]
     labels = [row["label"] for row in rows]
     y_true = np.asarray(labels, dtype=object)
-    return y_true, doc_ids, labels
+    return y_true, doc_ids, labels, rows
 
 
 def iter_phase2_jobs(
@@ -133,4 +140,3 @@ def _jsonable(value):
     if isinstance(value, (list, tuple)):
         return [_jsonable(item) for item in value]
     return value
-

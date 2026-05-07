@@ -24,8 +24,16 @@ Thumbs.db
 # Dataset
 /dataset
 
-# Output
-/output_triples
+# Generated outputs
+/output_triples/
+/output_triples*/
+/outputs/
+/outputs_*/
+/outputs_phase3_clustering/
+/embeddings/outputs/
+/output.*
+/outputs.*
 
-/outputs
-embeddings/outputs/
+
+.agents
+.codex

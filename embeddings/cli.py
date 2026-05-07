@@ -22,7 +22,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--phase1_output",
         type=Path,
-        default=Path("output_triples"),
+        default=Path("outputs/phase1_data"),
         help="Directory containing Phase 1 JSONL artifacts.",
     )
     parser.add_argument(

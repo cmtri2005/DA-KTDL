@@ -5,20 +5,22 @@ from __future__ import annotations
 import argparse
 from pathlib import Path
 
-
 REPRESENTATIONS = ("abstract", "triples", "concatenate", "hybrid")
 SPLITS = ("cluster",)
 
 
 def parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description="Phase 3: clustering on Phase 2 embeddings.")
+    parser = argparse.ArgumentParser(
+        description="Phase 3: clustering on Phase 2 embeddings."
+    )
     parser.add_argument(
         "--phase2_root",
         type=Path,
         default=None,
         help=(
             "Root directory containing Phase 2 artifacts. "
-            "If omitted, the pipeline tries embeddings/outputs/phase2_embeddings_eval then outputs/phase2_embeddings."
+            "If omitted, the pipeline tries outputs/phase2_embeddings, "
+            "outputs/phase2_embeddings_eval, then embeddings/outputs/phase2_embeddings_eval."
         ),
     )
     parser.add_argument(
@@ -45,9 +47,21 @@ def parse_args() -> argparse.Namespace:
         default=["all"],
         help="Model slugs (directory names) or 'all'. Example: sentence-transformers-all-mpnet-base-v2",
     )
-    parser.add_argument("--seed", type=int, default=42, help="Random seed (default: 42).")
-    parser.add_argument("--k_min", type=int, default=3, help="Minimum k for KMeans/GMM sweep (inclusive).")
-    parser.add_argument("--k_max", type=int, default=12, help="Maximum k for KMeans/GMM sweep (inclusive).")
+    parser.add_argument(
+        "--seed", type=int, default=42, help="Random seed (default: 42)."
+    )
+    parser.add_argument(
+        "--k_min",
+        type=int,
+        default=3,
+        help="Minimum k for KMeans/GMM sweep (inclusive).",
+    )
+    parser.add_argument(
+        "--k_max",
+        type=int,
+        default=12,
+        help="Maximum k for KMeans/GMM sweep (inclusive).",
+    )
     parser.add_argument(
         "--hdbscan_min_cluster_sizes",
         type=str,
@@ -86,7 +100,9 @@ def expand_requested(raw_items: list[str], allowed: tuple[str, ...]) -> list[str
 
     invalid = [item for item in normalized if item not in allowed]
     if invalid:
-        raise ValueError(f"Unsupported representations: {', '.join(invalid)}. Valid: {', '.join(allowed)}")
+        raise ValueError(
+            f"Unsupported representations: {', '.join(invalid)}. Valid: {', '.join(allowed)}"
+        )
 
     ordered_unique: list[str] = []
     for item in normalized:
@@ -103,4 +119,3 @@ def parse_int_list(value: str) -> list[int]:
     if not parsed:
         raise ValueError("Expected at least one integer.")
     return parsed
-

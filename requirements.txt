@@ -13,3 +13,9 @@ scikit-learn>=1.4
 hdbscan>=0.8.33
 optuna>=3.6
 evaluate>=0.4
+
+#### phase 6
+pandas>=2.0
+matplotlib>=3.8
+seaborn>=0.13
+jupyter>=1.0

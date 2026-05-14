@@ -1,0 +1,44 @@
+{
+  "phase": 6,
+  "phases_completed": [
+    1,
+    2,
+    3,
+    4,
+    5
+  ],
+  "pipeline_name": "Triples and Knowledge-Infused Embeddings",
+  "full_title": "Triples and Knowledge-Infused Embeddings for Clustering and Classification of Scientific Documents",
+  "dataset": {
+    "source": "arXiv Metadata Snapshot (Kaggle)",
+    "clustering_documents": 5000,
+    "classification_documents": 10000,
+    "primary_categories": "Computer Science (cs.*)",
+    "random_seed": 42
+  },
+  "representations": {
+    "count": 4,
+    "types": [
+      "abstract",
+      "triples",
+      "concatenate",
+      "hybrid"
+    ]
+  },
+  "output_location": "reports/",
+  "generated_artifacts": [
+    "results_table1.csv",
+    "results_table2.csv",
+    "results_table1.md",
+    "results_table2.md",
+    "confusion_matrix_summary.csv",
+    "top_errors.csv",
+    "cluster_analysis_summary.json",
+    "reproduction_report.md",
+    "figures/macro_f1_by_model.png",
+    "figures/clustering_metrics_comparison.png",
+    "figures/accuracy_heatmap.png",
+    "figures/representation_performance.png",
+    "environment_summary.json"
+  ]
+}

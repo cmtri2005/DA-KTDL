@@ -1,0 +1,22 @@
+{
+  "total_documents_cluster_set": 5000,
+  "total_documents_classify_set": 10000,
+  "representations": [
+    "abstract",
+    "triples",
+    "concatenate",
+    "hybrid"
+  ],
+  "embedding_models": [
+    "allenai-scibert_scivocab_uncased",
+    "allenai-specter",
+    "all-MiniLM-L6-v2",
+    "all-mpnet-base-v2"
+  ],
+  "clustering_algorithms": [
+    "kmeans",
+    "gmm",
+    "hdbscan"
+  ],
+  "note": "Cluster assignments and purity analysis stored in Phase 3 and Phase 4 outputs"
+}

@@ -13,15 +13,16 @@ Classification experiments using cluster signals from Phase 4.
 
 ## Top 10 Results
 
-| Clustering_Mode   | Classifier_Input   | Model   |   Accuracy |   Macro_F1 |   Weighted_F1 |      MCC |   Cohen_Kappa |   Top3_Accuracy |   ROC_AUC_OvR |
-|:------------------|:-------------------|:--------|-----------:|-----------:|--------------:|---------:|--------------:|----------------:|--------------:|
-| abstract          | hybrid             | scibert |     0.814  |   0.531429 |      0.808904 | 0.769817 |      0.76957  |          0.963  |           nan |
-| triples           | abstract           | scibert |     0.8135 |   0.531491 |      0.807159 | 0.768963 |      0.768753 |          0.9645 |           nan |
-| hybrid            | abstract           | scibert |     0.8115 |   0.50921  |      0.803868 | 0.766526 |      0.766258 |          0.963  |           nan |
-| triples           | concatenate        | scibert |     0.811  |   0.518568 |      0.804595 | 0.765809 |      0.765589 |          0.965  |           nan |
-| hybrid            | hybrid             | scibert |     0.8105 |   0.513944 |      0.803871 | 0.765466 |      0.765198 |          0.9625 |           nan |
-| concatenate       | concatenate        | scibert |     0.8085 |   0.499292 |      0.800703 | 0.763082 |      0.762811 |          0.9605 |           nan |
-| concatenate       | hybrid             | scibert |     0.808  |   0.498242 |      0.800242 | 0.762419 |      0.762162 |          0.9615 |           nan |
-| concatenate       | abstract           | scibert |     0.8075 |   0.49576  |      0.799806 | 0.76187  |      0.761591 |          0.9625 |           nan |
-| triples           | hybrid             | scibert |     0.8065 |   0.502233 |      0.798733 | 0.760334 |      0.760002 |          0.963  |           nan |
-| hybrid            | concatenate        | specter |     0.8055 |   0.503997 |      0.795393 | 0.758846 |      0.758585 |          0.9545 |           nan |
+```csv
+Clustering_Mode,Classifier_Input,Model,Accuracy,Macro_F1,Weighted_F1,MCC,Cohen_Kappa,Top3_Accuracy,ROC_AUC_OvR
+abstract,hybrid,scibert,0.814,0.5314288374487739,0.8089036328968122,0.7698174162365722,0.7695701957631268,0.963,
+triples,abstract,scibert,0.8135,0.5314907560837541,0.8071592683671579,0.7689625085651252,0.768752656167128,0.9645,
+hybrid,abstract,scibert,0.8115,0.5092096779178755,0.8038682830710222,0.766526229263028,0.7662577210127799,0.963,
+triples,concatenate,scibert,0.811,0.5185677582524062,0.8045945257204434,0.7658092591037678,0.7655887366008072,0.965,
+hybrid,hybrid,scibert,0.8105,0.5139440717393374,0.8038709674096917,0.7654663897076993,0.7651977898854766,0.9625,
+concatenate,concatenate,scibert,0.8085,0.4992923108204299,0.8007034947112438,0.7630819235057033,0.7628109197393644,0.9605,
+concatenate,hybrid,scibert,0.808,0.4982415789176054,0.8002421801310775,0.7624194871950324,0.7621622425127559,0.9615,
+concatenate,abstract,scibert,0.8075,0.4957600811076926,0.7998060395591537,0.7618698759581528,0.7615913068140301,0.9625,
+triples,hybrid,scibert,0.8065,0.5022331468515302,0.7987330315234561,0.7603344509138269,0.7600017860332202,0.963,
+hybrid,concatenate,specter,0.8055,0.5039971437559518,0.7953925283968691,0.7588462769008587,0.7585851226375164,0.9545,
+```

@@ -23,8 +23,8 @@ Mục tiêu: tái hiện pipeline trong paper "Triples and Knowledge-Infused Emb
 - [x] Map label từ category đầu tiên, ví dụ `cs.AI -> cs`.
 - [x] Clean abstract bằng lowercase và whitespace normalization.
 - [x] Chia non-overlap:
-  - [x] 5.000 documents cho clustering.
-  - [x] 10.000 documents cho classification.
+  - [x] *5.000 documents* cho *clustering.*
+  - [x] *10.000 documents* cho *classification.*
 - [x] Extract triples từ abstract bằng spaCy/scispaCy:
   - [x] verb/AUX làm relational anchor.
   - [x] subject từ `nsubj`, `nsubjpass`.

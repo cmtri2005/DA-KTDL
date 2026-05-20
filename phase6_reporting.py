@@ -26,14 +26,22 @@ import argparse
 
 import pandas as pd
 import numpy as np
-import matplotlib.pyplot as plt
-import seaborn as sns
 from sklearn.metrics import (
     confusion_matrix, 
     accuracy_score, 
     classification_report,
     f1_score
 )
+
+try:
+    import matplotlib.pyplot as plt
+    import seaborn as sns
+
+    HAS_PLOTTING = True
+except ModuleNotFoundError:
+    plt = None
+    sns = None
+    HAS_PLOTTING = False
 
 # Configure logging
 logging.basicConfig(
@@ -46,9 +54,30 @@ logger = logging.getLogger(__name__)
 # CONSTANTS
 # ============================================================================
 
-PHASE3_DIR = Path("outputs/outputs/phase3_clustering")
-PHASE4_DIR = Path("outputs/outputs/phase4_cluster_propagation")
-PHASE5_DIR = Path("outputs/outputs/da-ktdl-phase5-table2")
+PHASE1_DIR = Path("outputs/phase1_data")
+PHASE3_DIR = Path("outputs/phase3_clustering")
+PHASE4_DIR = Path("outputs/phase4_cluster_propagation")
+PHASE5_DIR = Path("outputs/phase5_train")
+
+PHASE3_CANDIDATES = (
+    Path("outputs/phase3_clustering"),
+    Path("outputs/outputs/phase3_clustering"),
+)
+PHASE4_CANDIDATES = (
+    Path("outputs/phase4_cluster_propagation"),
+    Path("outputs/outputs/phase4_cluster_propagation"),
+)
+PHASE5_CANDIDATES = (
+    Path("outputs/phase5_train"),
+    Path("outputs/phase5_classification"),
+    Path("outputs/outputs/da-ktdl-phase5-table2"),
+)
+
+MODEL_ALIAS_TO_SLUG = {
+    "scibert": "allenai-scibert_scivocab_uncased",
+    "specter": "allenai-specter",
+    "minilm": "sentence-transformers-all-MiniLM-L6-v2",
+}
 
 REPRESENTATIONS = ["abstract", "concatenate", "hybrid", "triples"]
 EMBEDDING_MODELS = [
@@ -66,6 +95,103 @@ PAPER_EXPECTED = {
     "clustering_ari": 0.47,
     "clustering_nmi": 0.55,
 }
+
+
+def detect_phase_dir(
+    label: str,
+    requested: Optional[Path],
+    candidates: Tuple[Path, ...],
+    required_file: Optional[str] = None,
+) -> Path:
+    """Resolve an input directory, preferring explicit paths and current outputs."""
+    if requested is not None:
+        if not requested.exists():
+            raise FileNotFoundError(f"{label} directory not found: {requested}")
+        if required_file and not (requested / required_file).exists():
+            raise FileNotFoundError(
+                f"{label} directory is missing {required_file}: {requested}"
+            )
+        return requested
+
+    for candidate in candidates:
+        if not candidate.exists():
+            continue
+        if required_file and not (candidate / required_file).exists():
+            continue
+        return candidate
+
+    tried = ", ".join(str(path) for path in candidates)
+    suffix = f" containing {required_file}" if required_file else ""
+    raise FileNotFoundError(f"Could not find {label} directory{suffix}. Tried: {tried}")
+
+
+def phase5_experiment_dir(row: pd.Series) -> Optional[Path]:
+    """Return the local Phase 5 experiment directory for one Table 2 row."""
+    model_slug = row.get("Model_Slug")
+    if not isinstance(model_slug, str) or not model_slug:
+        model_slug = MODEL_ALIAS_TO_SLUG.get(str(row.get("Model", "")).lower())
+    if not model_slug:
+        return None
+
+    cluster_mode = str(row.get("Clustering_Mode", ""))
+    classifier_input = str(row.get("Classifier_Input", ""))
+    candidate = PHASE5_DIR / cluster_mode / classifier_input / model_slug
+    return candidate if candidate.exists() else None
+
+
+def best_trial_dir(row: pd.Series) -> Optional[Path]:
+    """Resolve the local best trial directory for one Phase 5 experiment row."""
+    experiment_dir = phase5_experiment_dir(row)
+    if experiment_dir is None:
+        return None
+
+    summary_path = experiment_dir / "experiment_summary.json"
+    trial_number = row.get("Best_Trial_Number", 0)
+    if summary_path.exists():
+        with open(summary_path, "r", encoding="utf-8") as fh:
+            summary = json.load(fh)
+        trial_number = summary.get("best_trial_number", trial_number)
+
+    try:
+        trial_number = int(trial_number)
+    except (TypeError, ValueError):
+        trial_number = 0
+
+    trial_dir = experiment_dir / f"trial_{trial_number:03d}"
+    if trial_dir.exists():
+        return trial_dir
+
+    trial_dirs = sorted(experiment_dir.glob("trial_*"))
+    return trial_dirs[0] if trial_dirs else None
+
+
+def load_phase1_classify_texts() -> Dict[str, Dict[str, str]]:
+    """Load abstract/triples text for joining best-classifier error examples."""
+    combined_path = PHASE1_DIR / "classify_combined.jsonl"
+    if not combined_path.exists():
+        return {}
+
+    lookup: Dict[str, Dict[str, str]] = {}
+    with open(combined_path, "r", encoding="utf-8") as fh:
+        for line in fh:
+            if not line.strip():
+                continue
+            row = json.loads(line)
+            lookup[str(row.get("id"))] = {
+                "abstract": str(row.get("fmt_abstract", "")),
+                "triples": str(row.get("triples_text", "")),
+                "hybrid": str(row.get("fmt_hybrid", "")),
+            }
+    return lookup
+
+
+def dataframe_to_markdown(df: pd.DataFrame, index: bool = False) -> str:
+    """Render a DataFrame as markdown, falling back when tabulate is unavailable."""
+    try:
+        return df.to_markdown(index=index)
+    except ImportError:
+        csv_text = df.to_csv(index=index).strip()
+        return f"```csv\n{csv_text}\n```"
 
 # ============================================================================
 # TASK 1: BUILD TABLE 1 (CLUSTERING RESULTS)
@@ -152,14 +278,14 @@ def save_table1_markdown(table1: pd.DataFrame, output_dir: Path):
     with open(md_file, "w", encoding="utf-8") as f:
         f.write("# Table 1: Clustering Evaluation Results\n\n")
         f.write("Clustering experiments across 4 representations and 4 embedding models.\n\n")
-        f.write(table1.head(20).to_markdown(index=False))
+        f.write(dataframe_to_markdown(table1.head(20), index=False))
         f.write("\n\n*Table 1 (continued): See `results_table1.csv` for full results.*\n\n")
         
         # Add summary statistics
         f.write("## Summary Statistics\n\n")
         f.write("Best performing configurations:\n\n")
         best_ari = table1.nlargest(5, "ARI")[["Representation", "Embedding_Model", "Clustering_Algorithm", "ARI", "NMI"]]
-        f.write(best_ari.to_markdown(index=False))
+        f.write(dataframe_to_markdown(best_ari, index=False))
     
     logger.info(f"✓ Table 1 markdown saved to {md_file}")
 
@@ -264,12 +390,12 @@ def save_table2_markdown(table2: pd.DataFrame, best_by_pair: pd.DataFrame, outpu
         
         # All results
         f.write("## All Experiments\n\n")
-        f.write(table2.head(20).to_markdown(index=False))
+        f.write(dataframe_to_markdown(table2.head(20), index=False))
         f.write("\n\n*See `results_table2.csv` for full results.*\n\n")
         
         # Best by pair
         f.write("## Best by Pair (Clustering Mode × Classifier Input)\n\n")
-        f.write(best_by_pair.to_markdown(index=False))
+        f.write(dataframe_to_markdown(best_by_pair, index=False))
     
     logger.info(f"✓ Table 2 markdown saved to {md_file}")
 
@@ -290,9 +416,6 @@ def create_confusion_matrix_and_errors(
     """
     logger.info("Analyzing confusion matrix and errors...")
     
-    # Since predictions.csv is in Kaggle workspace, we'll create summary from Table 2
-    # In a real scenario, you would read predictions.csv from the Kaggle output
-    
     # Find best model row
     best_row = table2.iloc[0]
     
@@ -309,6 +432,46 @@ def create_confusion_matrix_and_errors(
     cm_summary_csv = output_dir / "confusion_matrix_summary.csv"
     cm_summary.to_csv(cm_summary_csv, index=False)
     logger.info(f"✓ Confusion matrix summary saved to {cm_summary_csv}")
+
+    trial_dir = best_trial_dir(best_row)
+    if trial_dir is None:
+        logger.warning(
+            "Could not resolve local best trial directory for best classifier. "
+            "Only summary metrics were written."
+        )
+        return cm_summary
+
+    confusion_path = trial_dir / "confusion_matrix.csv"
+    predictions_path = trial_dir / "validation_predictions.csv"
+    metadata = {
+        "best_clustering_mode": str(best_row["Clustering_Mode"]),
+        "best_classifier_input": str(best_row["Classifier_Input"]),
+        "best_model": str(best_row["Model"]),
+        "best_trial_dir": str(trial_dir),
+        "confusion_matrix_source": str(confusion_path) if confusion_path.exists() else None,
+        "validation_predictions_source": str(predictions_path) if predictions_path.exists() else None,
+    }
+
+    if confusion_path.exists():
+        confusion_df = pd.read_csv(confusion_path)
+        out_path = output_dir / "best_confusion_matrix.csv"
+        confusion_df.to_csv(out_path, index=False)
+        logger.info(f"✓ Best confusion matrix saved to {out_path}")
+    else:
+        logger.warning("Best trial confusion matrix not found: %s", confusion_path)
+
+    if predictions_path.exists():
+        predictions_df = pd.read_csv(predictions_path, dtype={"id": str})
+        out_path = output_dir / "best_validation_predictions.csv"
+        predictions_df.to_csv(out_path, index=False)
+        logger.info(f"✓ Best validation predictions saved to {out_path}")
+    else:
+        logger.warning("Best trial predictions not found: %s", predictions_path)
+
+    metadata_path = output_dir / "best_classifier_artifacts.json"
+    with open(metadata_path, "w", encoding="utf-8") as fh:
+        json.dump(metadata, fh, ensure_ascii=False, indent=2)
+    logger.info(f"✓ Best classifier artifact metadata saved to {metadata_path}")
     
     return cm_summary
 
@@ -319,21 +482,60 @@ def create_top_errors_summary(table2: pd.DataFrame, output_dir: Path):
     """
     logger.info("Creating error analysis...")
     
-    # Find worst 10 configurations
-    top_errors = table2.tail(10).copy()
-    top_errors["Error_Rate"] = 1.0 - top_errors["Accuracy"]
-    top_errors = top_errors.sort_values("Error_Rate", ascending=False)
-    
-    errors_csv = output_dir / "top_errors.csv"
-    top_errors[[
+    # Keep a configuration-level view for debugging weaker runs.
+    worst_configs = table2.tail(10).copy()
+    worst_configs["Error_Rate"] = 1.0 - worst_configs["Accuracy"]
+    worst_configs = worst_configs.sort_values("Error_Rate", ascending=False)
+
+    worst_configs_csv = output_dir / "worst_configurations.csv"
+    worst_configs[[
         "Clustering_Mode",
         "Classifier_Input",
         "Model",
         "Accuracy",
         "Error_Rate",
         "Macro_F1",
-    ]].to_csv(errors_csv, index=False)
-    logger.info(f"✓ Error analysis saved to {errors_csv}")
+    ]].to_csv(worst_configs_csv, index=False)
+    logger.info(f"✓ Worst configuration summary saved to {worst_configs_csv}")
+
+    # Prefer document-level top errors from the local Phase 5 best trial.
+    best_row = table2.iloc[0]
+    trial_dir = best_trial_dir(best_row)
+    if trial_dir is None:
+        logger.warning("Could not resolve best trial directory; using worst configurations only.")
+        fallback_csv = output_dir / "top_errors.csv"
+        worst_configs[[
+            "Clustering_Mode",
+            "Classifier_Input",
+            "Model",
+            "Accuracy",
+            "Error_Rate",
+            "Macro_F1",
+        ]].to_csv(fallback_csv, index=False)
+        return worst_configs
+
+    errors_path = trial_dir / "top_errors.csv"
+    if not errors_path.exists():
+        logger.warning("Best trial top_errors.csv not found: %s", errors_path)
+        return worst_configs
+
+    top_errors = pd.read_csv(errors_path, dtype={"id": str})
+    phase1_lookup = load_phase1_classify_texts()
+    if phase1_lookup and "id" in top_errors.columns:
+        top_errors["abstract"] = top_errors["id"].map(
+            lambda doc_id: phase1_lookup.get(str(doc_id), {}).get("abstract", "")
+        )
+        top_errors["triples"] = top_errors["id"].map(
+            lambda doc_id: phase1_lookup.get(str(doc_id), {}).get("triples", "")
+        )
+
+    top_errors["best_clustering_mode"] = best_row["Clustering_Mode"]
+    top_errors["best_classifier_input"] = best_row["Classifier_Input"]
+    top_errors["best_model"] = best_row["Model"]
+
+    errors_csv = output_dir / "top_errors.csv"
+    top_errors.to_csv(errors_csv, index=False)
+    logger.info(f"✓ Document-level top errors saved to {errors_csv}")
     
     return top_errors
 
@@ -347,19 +549,40 @@ def create_cluster_analysis(output_dir: Path):
     Analyze cluster purity using best clustering configuration.
     """
     logger.info("Creating cluster analysis...")
-    
-    # Since we need predictions from actual clustering, we'll create a summary
-    # In a real scenario, this would read cluster assignments from Phase 3
-    
+
+    cluster_summary_path = PHASE3_DIR / "analysis" / "best_by_algorithm_cluster_analysis_summary.csv"
+    if cluster_summary_path.exists():
+        cluster_df = pd.read_csv(cluster_summary_path)
+        out_csv = output_dir / "cluster_analysis_summary.csv"
+        cluster_df.to_csv(out_csv, index=False)
+
+        best_non_noise = cluster_df.sort_values(
+            ["weighted_purity_excluding_noise", "ari", "nmi"],
+            ascending=False,
+        ).head(5)
+        analysis_summary = {
+            "source": str(cluster_summary_path),
+            "num_best_algorithm_rows": int(len(cluster_df)),
+            "total_documents": int(cluster_df["num_documents"].max()) if not cluster_df.empty else 0,
+            "best_weighted_purity_rows": best_non_noise.to_dict(orient="records"),
+            "note": "Detailed cluster assignments, purity, and label distributions are stored under Phase 3 analysis directories.",
+        }
+    else:
+        logger.warning("Phase 3 cluster analysis summary not found: %s", cluster_summary_path)
+        analysis_summary = {
+            "total_clusters": "See Phase 3 outputs",
+            "total_documents": 5000,
+            "analysis_status": "Cluster assignments stored in Phase 3 output directory",
+        }
+
     analysis_summary = {
-        "total_clusters": "See Phase 3 outputs",
-        "total_documents": 5000,
-        "analysis_status": "Cluster assignments stored in Phase 3 output directory"
+        **analysis_summary,
+        "phase3_root": str(PHASE3_DIR),
     }
     
     analysis_file = output_dir / "cluster_analysis_summary.json"
-    with open(analysis_file, "w") as f:
-        json.dump(analysis_summary, f, indent=2)
+    with open(analysis_file, "w", encoding="utf-8") as f:
+        json.dump(analysis_summary, f, ensure_ascii=False, indent=2)
     
     logger.info(f"✓ Cluster analysis summary saved to {analysis_file}")
 
@@ -375,6 +598,13 @@ def create_visualizations(
 ):
     """Generate plots and save to figures/ directory."""
     logger.info("Generating visualizations...")
+
+    if not HAS_PLOTTING:
+        logger.warning(
+            "matplotlib/seaborn are not installed; skipping Phase 6 visualizations. "
+            "Install phase 6 requirements to generate figures."
+        )
+        return
     
     figures_dir = output_dir / "figures"
     figures_dir.mkdir(exist_ok=True)
@@ -563,7 +793,7 @@ def create_final_report(
             top5 = table1.nlargest(5, "ARI")[[
                 "Representation", "Embedding_Model", "Clustering_Algorithm", "K_or_Params", "ARI", "NMI"
             ]]
-            f.write(top5.to_markdown(index=False))
+            f.write(dataframe_to_markdown(top5, index=False))
             f.write("\n\n")
         
         # ---- Section 6: Cluster Propagation ----
@@ -611,12 +841,16 @@ def create_final_report(
             top5_table2 = table2.head(5)[[
                 "Clustering_Mode", "Classifier_Input", "Model", "Accuracy", "Macro_F1", "Top3_Accuracy"
             ]]
-            f.write(top5_table2.to_markdown(index=False))
+            f.write(dataframe_to_markdown(top5_table2, index=False))
             f.write("\n\n")
         
         # ---- Section 9: Confusion Matrix Analysis ----
         f.write("## 9. Confusion Matrix Analysis\n\n")
-        f.write("See `confusion_matrix_summary.csv` for detailed confusion matrix metrics.\n\n")
+        f.write("See `confusion_matrix_summary.csv` for per-configuration summary metrics.\n")
+        f.write("When local Phase 5 trial artifacts are available, Phase 6 also exports:\n")
+        f.write("- `best_confusion_matrix.csv` - confusion matrix from the best classifier trial\n")
+        f.write("- `best_validation_predictions.csv` - validation predictions from the best classifier trial\n")
+        f.write("- `best_classifier_artifacts.json` - source paths for the best local trial\n\n")
         f.write("**Best Model Performance:**\n")
         if best_table2 is not None:
             f.write(f"- Model: {best_table2['Model']}\n")
@@ -625,7 +859,9 @@ def create_final_report(
         
         # ---- Section 10: Error Analysis ----
         f.write("## 10. Error Analysis\n\n")
-        f.write("See `top_errors.csv` for configurations with lowest performance.\n\n")
+        f.write("See `top_errors.csv` for document-level errors from the best local Phase 5 trial.\n")
+        f.write("If Phase 1 texts are available, this file is enriched with the original abstract and triples text.\n")
+        f.write("See `worst_configurations.csv` for the lowest-performing Phase 5 configurations.\n\n")
         
         # ---- Section 11: Comparison with Paper Results ----
         f.write("## 11. Comparison with Paper Results\n\n")
@@ -699,7 +935,10 @@ def create_final_report(
         f.write("- `results_table1.csv` - Full clustering results\n")
         f.write("- `results_table2.csv` - Full classification results\n")
         f.write("- `confusion_matrix_summary.csv` - Confusion matrix metrics\n")
-        f.write("- `top_errors.csv` - Lowest-performing configurations\n")
+        f.write("- `best_confusion_matrix.csv` - Best classifier confusion matrix when local Phase 5 artifacts exist\n")
+        f.write("- `best_validation_predictions.csv` - Best classifier validation predictions\n")
+        f.write("- `top_errors.csv` - Document-level top errors for the best classifier\n")
+        f.write("- `worst_configurations.csv` - Lowest-performing configurations\n")
         f.write("- `cluster_analysis_summary.json` - Cluster purity analysis\n")
         f.write("- `figures/` - Visualizations (heatmaps, bar charts, etc.)\n")
         f.write("- `run_smoke.ps1` - Quick smoke test script\n")
@@ -725,13 +964,13 @@ def create_smoke_test_script(output_dir: Path):
 # Usage: .\\run_smoke.ps1
 
 Write-Host "=== Phase 1: Data Preparation (Smoke Test) ===" -ForegroundColor Green
-python -m data_processing.pipeline --output-dir outputs/phase1_smoke --sample-size 100
+python -m arxiv_triples_pipeline --output outputs/phase1_smoke --n_cluster 100 --n_classify 200 --batch_size 128 --seed 42
 
 Write-Host "=== Phase 2: Embedding Generation (Smoke Test) ===" -ForegroundColor Green
-python -m embeddings --output-dir outputs/phase2_smoke --sample-size 100
+python -m embeddings --phase1_output outputs/phase1_smoke --output_root outputs/phase2_smoke --splits cluster --representations abstract --models minilm --batch_size 16 --overwrite
 
 Write-Host "=== Phase 3: Clustering (Smoke Test) ===" -ForegroundColor Green
-python -m clustering --output-dir outputs/phase3_smoke --sample-size 100
+python -m clustering --phase2_root outputs/phase2_smoke --output_root outputs/phase3_smoke --representations abstract --models sentence-transformers-all-MiniLM-L6-v2 --k_min 3 --k_max 4 --hdbscan_min_cluster_sizes 5 --overwrite
 
 Write-Host "=== Smoke Test Complete ===" -ForegroundColor Green
 Write-Host "Check outputs/phase*_smoke/ for results"
@@ -777,30 +1016,30 @@ setup: install
 	mkdir -p reports/figures
 
 phase1:
-	python -m data_processing.pipeline --output-dir outputs/phase1_data
+	python -m arxiv_triples_pipeline --output outputs/phase1_data --n_cluster 5000 --n_classify 10000 --seed 42
 
 phase2:
-	python -m embeddings --output-dir outputs/phase2_embeddings
+	python -m embeddings --phase1_output outputs/phase1_data --output_root outputs/phase2_embeddings --splits all --representations all --models all
 
 phase3:
-	python -m clustering --output-dir outputs/phase3_clustering
+	python -m clustering --phase2_root outputs/phase2_embeddings --output_root outputs/phase3_clustering
 
 phase4:
-	python -m propagation --output-dir outputs/phase4_cluster_propagation
+	python -m propagation --phase2_root outputs/phase2_embeddings --phase3_root outputs/phase3_clustering --output_root outputs/phase4_cluster_propagation
 
 phase5:
-	python -m classification --output-dir outputs/phase5_classification
+	python -m classification --phase1_root outputs/phase1_data --phase3_root outputs/phase3_clustering --phase4_root outputs/phase4_cluster_propagation --output_root outputs/phase5_train
 
 phase6:
-	python phase6_reporting.py --output-dir reports/
+	python phase6_reporting.py --output-dir reports/ --phase5-dir outputs/phase5_train
 
 all: phase1 phase2 phase3 phase4 phase5 phase6
 
 smoke:
 	@echo "Running smoke test on 100 documents..."
-	python -m data_processing.pipeline --output-dir outputs/phase1_smoke --sample-size 100
-	python -m embeddings --output-dir outputs/phase2_smoke --sample-size 100
-	python -m clustering --output-dir outputs/phase3_smoke --sample-size 100
+	python -m arxiv_triples_pipeline --output outputs/phase1_smoke --n_cluster 100 --n_classify 200 --batch_size 128 --seed 42
+	python -m embeddings --phase1_output outputs/phase1_smoke --output_root outputs/phase2_smoke --splits cluster --representations abstract --models minilm --batch_size 16 --overwrite
+	python -m clustering --phase2_root outputs/phase2_smoke --output_root outputs/phase3_smoke --representations abstract --models sentence-transformers-all-MiniLM-L6-v2 --k_min 3 --k_max 4 --hdbscan_min_cluster_sizes 5 --overwrite
 
 clean:
 	rm -rf outputs/phase*_data outputs/phase*_embeddings outputs/phase*_clustering
@@ -861,11 +1100,20 @@ def create_environment_summary(output_dir: Path):
                 "results_table1.csv": "Clustering results table",
                 "results_table2.csv": "Classification results table",
                 "confusion_matrix_summary.csv": "Confusion matrix metrics",
+                "best_confusion_matrix.csv": "Confusion matrix for the best local Phase 5 classifier",
+                "best_validation_predictions.csv": "Validation predictions for the best local Phase 5 classifier",
                 "top_errors.csv": "Error analysis",
+                "worst_configurations.csv": "Lowest-performing Phase 5 configurations",
                 "reproduction_report.md": "Final comprehensive report",
                 "figures/": "Visualization plots"
             }
-        }
+        },
+        "input_directories": {
+            "phase1": str(PHASE1_DIR),
+            "phase3": str(PHASE3_DIR),
+            "phase4": str(PHASE4_DIR),
+            "phase5": str(PHASE5_DIR),
+        },
     }
     
     summary_file = output_dir / "environment_summary.json"
@@ -879,8 +1127,33 @@ def create_environment_summary(output_dir: Path):
 # MAIN ORCHESTRATION
 # ============================================================================
 
-def main(output_dir: str = "reports"):
+def main(
+    output_dir: str = "reports",
+    phase3_dir: Optional[Path] = None,
+    phase4_dir: Optional[Path] = None,
+    phase5_dir: Optional[Path] = None,
+):
     """Main reporting pipeline orchestration."""
+    global PHASE3_DIR, PHASE4_DIR, PHASE5_DIR
+
+    PHASE3_DIR = detect_phase_dir(
+        "Phase 3",
+        phase3_dir,
+        PHASE3_CANDIDATES,
+        required_file="results_table.csv",
+    )
+    PHASE4_DIR = detect_phase_dir(
+        "Phase 4",
+        phase4_dir,
+        PHASE4_CANDIDATES,
+        required_file=None,
+    )
+    PHASE5_DIR = detect_phase_dir(
+        "Phase 5",
+        phase5_dir,
+        PHASE5_CANDIDATES,
+        required_file="results_table_all_runs.csv",
+    )
     
     output_dir = Path(output_dir)
     output_dir.mkdir(exist_ok=True)
@@ -889,6 +1162,9 @@ def main(output_dir: str = "reports"):
     logger.info("PHASE 6: REPORTING AND REPRODUCIBILITY")
     logger.info("="*70)
     logger.info(f"Output directory: {output_dir.absolute()}")
+    logger.info("Phase 3 input: %s", PHASE3_DIR)
+    logger.info("Phase 4 input: %s", PHASE4_DIR)
+    logger.info("Phase 5 input: %s", PHASE5_DIR)
     
     # ---- Task 1: Build Table 1 ----
     logger.info("\n[TASK 1] Building Table 1...")
@@ -948,6 +1224,29 @@ if __name__ == "__main__":
         default="reports",
         help="Output directory for reports (default: reports/)"
     )
+    parser.add_argument(
+        "--phase3-dir",
+        type=Path,
+        default=None,
+        help="Phase 3 clustering output directory (default: auto-detect current outputs).",
+    )
+    parser.add_argument(
+        "--phase4-dir",
+        type=Path,
+        default=None,
+        help="Phase 4 cluster propagation output directory (default: auto-detect current outputs).",
+    )
+    parser.add_argument(
+        "--phase5-dir",
+        type=Path,
+        default=None,
+        help="Phase 5 training output directory (default: auto-detect outputs/phase5_train).",
+    )
     
     args = parser.parse_args()
-    main(args.output_dir)
+    main(
+        output_dir=args.output_dir,
+        phase3_dir=args.phase3_dir,
+        phase4_dir=args.phase4_dir,
+        phase5_dir=args.phase5_dir,
+    )

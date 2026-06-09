@@ -16,7 +16,7 @@
     (2) Chỉ dùng các *Triples*.
     (3) Nối liền *Tóm tắt + Triples.*
     (4) *Hybrid* (phân tách rõ ràng Tóm tắt và Triples).
-*Nhúng văn bản (Embeddings):* Dùng 4 mô hình Transformer (MiniLM, MPNet, SciBERT, SPECTER) để vector hóa.
+*Nhúng văn bản (Embeddings):* Dùng 4 mô hình Transformer *(MiniLM, MPNet, SciBERT, SPECTER)* để vector hóa.
 *Huấn luyện & Đánh giá:* Dùng KMeans, GMM, HDBSCAN cho tác vụ phân cụm, và dùng các mô hình Transformer cho tác vụ phân loại.
 
 **5. Dữ liệu và Đối tượng nghiên cứu**

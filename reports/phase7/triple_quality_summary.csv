@@ -1,0 +1,4 @@
+split,n_documents,n_triples,avg_triples_per_doc,avg_quality_score,max_quality_score,avg_high_triples_per_doc,avg_low_triples_per_doc,zero_triple_documents,high_threshold
+cluster,5000,33587,6.7174,0.769383,0.979671,6.6966,0.0208,74,0.65
+classify,10000,68084,6.8084,0.768498,0.979671,6.7871,0.0213,145,0.65
+all,15000,101671,6.778067,0.76879,0.979671,6.756933,0.021133,219,0.65
